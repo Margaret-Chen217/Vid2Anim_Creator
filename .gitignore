@@ -6,3 +6,5 @@ __pycache__/
 model_files
 
 pretrained_models/
+
+tree.txt
