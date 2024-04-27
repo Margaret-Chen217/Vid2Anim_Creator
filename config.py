@@ -1,0 +1,150 @@
+part_match = {'root': 'root', 'bone_00': 'Pelvis', 'bone_01': 'L_Hip', 'bone_02': 'R_Hip',
+              'bone_03': 'Spine1', 'bone_04': 'L_Knee', 'bone_05': 'R_Knee', 'bone_06': 'Spine2',
+              'bone_07': 'L_Ankle', 'bone_08': 'R_Ankle', 'bone_09': 'Spine3', 'bone_10': 'L_Foot',
+              'bone_11': 'R_Foot', 'bone_12': 'Neck', 'bone_13': 'L_Collar', 'bone_14': 'R_Collar',
+              'bone_15': 'Head', 'bone_16': 'L_Shoulder', 'bone_17': 'R_Shoulder', 'bone_18': 'L_Elbow',
+              'bone_19': 'R_Elbow', 'bone_20': 'L_Wrist', 'bone_21': 'R_Wrist', 'bone_22': 'L_Hand', 'bone_23': 'R_Hand'}
+
+
+x_part_match = {
+    "root": "root",
+    "bone_00": "pelvis",
+    "bone_01": "left_hip",
+    "bone_02": "right_hip",
+    "bone_03": "spine1",
+    "bone_04": "left_knee",
+    "bone_05": "right_knee",
+    "bone_06": "spine2",
+    "bone_07": "left_ankle",
+    "bone_08": "right_ankle",
+    "bone_09": "spine3",
+    "bone_10": "left_foot",
+    "bone_11": "right_foot",
+    "bone_12": "neck",
+    "bone_13": "left_collar",
+    "bone_14": "right_collar",
+    "bone_15": "head",
+    "bone_16": "left_shoulder",
+    "bone_17": "right_shoulder",
+    "bone_18": "left_elbow",
+    "bone_19": "right_elbow",
+    "bone_20": "left_wrist",
+    "bone_21": "right_wrist",
+    "bone_22": "jaw",
+    "bone_23": "left_eye_smplhf",
+    "bone_24": "right_eye_smplhf",
+    "bone_25": "left_index1",
+    "bone_26": "left_index2",
+    "bone_27": "left_index3",
+    "bone_28": "left_middle1",
+    "bone_29": "left_middle2",
+    "bone_30": "left_middle3",
+    "bone_31": "left_pinky1",
+    "bone_32": "left_pinky2",
+    "bone_33": "left_pinky3",
+    "bone_34": "left_ring1",
+    "bone_35": "left_ring2",
+    "bone_36": "left_ring3",
+    "bone_37": "left_thumb1",
+    "bone_38": "left_thumb2",
+    "bone_39": "left_thumb3",
+    "bone_40": "right_index1",
+    "bone_41": "right_index2",
+    "bone_42": "right_index3",
+    "bone_43": "right_middle1",
+    "bone_44": "right_middle2",
+    "bone_45": "right_middle3",
+    "bone_46": "right_pinky1",
+    "bone_47": "right_pinky2",
+    "bone_48": "right_pinky3",
+    "bone_49": "right_ring1",
+    "bone_50": "right_ring2",
+    "bone_51": "right_ring3",
+    "bone_52": "right_thumb1",
+    "bone_53": "right_thumb2",
+    "bone_54": "right_thumb3",
+}
+
+# 定义预测结果需要保存的关键字段名列表
+res_keys_hybrik = [
+    "joint_num",
+    "pred_uvd",
+    "pred_scores",
+    "pred_camera",
+    "f",
+    "pred_betas",
+    "pred_thetas",
+    "pred_phi",
+    "pred_cam_root",
+    # 'features',
+    "transl",
+    "transl_camsys",
+    "bbox",
+    "height",
+    "width",
+    "img_path",
+]
+
+res_keys_niki = [
+    "joint_num",
+    'pred_uvd',
+    'pred_xyz_29',
+    'pred_scores',
+    'pred_sigma',
+    'f',
+    'pred_betas',
+    'pred_phi',
+    'scale_mult',
+    'pred_cam_root',
+    'bbox',
+    'height',
+    'width',
+    'img_path',
+    'img_sizes'
+]
+
+halpe_wrist_ids = [94, 115]
+halpe_left_hand_ids = [
+    5,
+    6,
+    7,
+    9,
+    10,
+    11,
+    17,
+    18,
+    19,
+    13,
+    14,
+    15,
+    1,
+    2,
+    3,
+]
+halpe_right_hand_ids = [
+    5,
+    6,
+    7,
+    9,
+    10,
+    11,
+    17,
+    18,
+    19,
+    13,
+    14,
+    15,
+    1,
+    2,
+    3,
+]
+
+halpe_lhand_leaves = [8, 12, 20, 16, 4]
+halpe_rhand_leaves = [8, 12, 20, 16, 4]
+
+halpe_hand_ids = [i + 94 for i in halpe_left_hand_ids] + [
+    i + 115 for i in halpe_right_hand_ids
+]
+halpe_hand_leaves_ids = [i + 94 for i in halpe_lhand_leaves] + [
+    i + 115 for i in halpe_rhand_leaves
+]
