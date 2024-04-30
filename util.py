@@ -41,7 +41,9 @@ def video2imageSeq(context, tempfolder_path):
     return img_path_list
 
 
-def butterworth_denoise(mat_origin, order=4, cutoff_freq=0.1, sampling_freq=1, joint_num = 55):
+def butterworth_denoise(
+    mat_origin, order=4, cutoff_freq=0.1, sampling_freq=1, joint_num=55
+):
     # 计算滤波器的分子和分母系数
     nyquist_freq = 0.5 * sampling_freq
     normalized_cutoff_freq = cutoff_freq / nyquist_freq
@@ -101,12 +103,14 @@ def conv_avg_denoise(mat_origin, kernel_size=3, joint_num=55):
     filtered_matrix = np.zeros_like(matrix)
 
     # 创建二维卷积核
-    kernel = np.ones((kernel_size, kernel_size)) / (kernel_size ** 2)
+    kernel = np.ones((kernel_size, kernel_size)) / (kernel_size**2)
 
     # 对每个关节的旋转矩阵进行卷积操作
     for j in range(joint_num):
         for i in range(3):
-            filtered_matrix[:, j, i, :] = convolve2d(matrix[:, j, i, :], kernel, mode='same')
+            filtered_matrix[:, j, i, :] = convolve2d(
+                matrix[:, j, i, :], kernel, mode="same"
+            )
 
     print(filtered_matrix.shape)
 
@@ -182,6 +186,7 @@ def get_video_info(in_file):
 
     return stream, videoinfo, datalen
 
+
 import os
 import pickle as pk
 
@@ -244,19 +249,31 @@ def init_scene(self, root_path, joint_num):
     # load fbx model
     print("joint_num init = ", joint_num)
     if joint_num == 55:
-        bpy.ops.import_scene.fbx(filepath=os.path.join(root_path, 'data', 'smplx-neutral.fbx'), axis_forward='-Y', axis_up='-Z', global_scale=1)
-        obname = 'SMPLX-mesh-neutral'
-        arm_obname = 'SMPLX-neutral'
+        bpy.ops.import_scene.fbx(
+            filepath=os.path.join(root_path, "data", "smplx-neutral.fbx"),
+            axis_forward="-Y",
+            axis_up="-Z",
+            global_scale=1,
+        )
+        obname = "SMPLX-mesh-neutral"
+        arm_obname = "SMPLX-neutral"
     else:
         gender = "m"
-        bpy.ops.import_scene.fbx(filepath=os.path.join(root_path, 'data', f'basicModel_{gender}_lbs_10_207_0_v1.0.2.fbx'), axis_forward='-Y', axis_up='-Z', global_scale=100)
-        obname = '%s_avg' % gender[0]
-        arm_obname = 'Armature'
+        bpy.ops.import_scene.fbx(
+            filepath=os.path.join(
+                root_path, "data", f"basicModel_{gender}_lbs_10_207_0_v1.0.2.fbx"
+            ),
+            axis_forward="-Y",
+            axis_up="-Z",
+            global_scale=100,
+        )
+        obname = "%s_avg" % gender[0]
+        arm_obname = "Armature"
 
     print("success load fbx")
     self.report({"INFO"}, "Load FBX " + obname)
     ob = bpy.data.objects[obname]
-    
+
     ob.active_material = bpy.data.materials["Material"]
 
     cam_ob = bpy.data.objects["Camera"]
@@ -308,12 +325,12 @@ def convert_transl(transl):
     Returns:
         _type_: _description_
     """
-    
+
     xyz_convert = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]], dtype=np.float32)
-   
+
     if type(transl) == torch.Tensor:
         return transl.numpy().dot(xyz_convert)
-        
+
     else:
         # type(transl) == np.ndarray
         return transl.dot(xyz_convert)
@@ -354,10 +371,7 @@ def setState0():
 
 # apply trans pose and shape to character
 def apply_trans_pose_shape(trans, pose, shape, ob, arm_ob, obname, scene, frame=None):
-    # 将姿势参数pose转换为旋转矩阵mrots和姿势形状参数bsh
-    mrots, bsh = rodrigues2bshapes(pose)
-    # 对第一个旋转矩阵mrots[0]进行180度旋转,使其与角色的初始姿态对齐
-    mrots[0] = rotate180(mrots[0])
+
     # 转换坐标系F
     trans = convert_transl(trans)
 
@@ -371,12 +385,13 @@ def apply_trans_pose_shape(trans, pose, shape, ob, arm_ob, obname, scene, frame=
     arm_ob.pose.bones["root"].location = trans
     arm_ob.pose.bones["root"].keyframe_insert("location", frame=frame)
     # set the pose of each bone to the quaternion specified by pose
-    for ibone, mrot in enumerate(mrots):
+    for ibone, mrot in enumerate(pose):
         bone = arm_ob.pose.bones[selected_part_match["bone_%02d" % ibone]]
-        bone.rotation_quaternion = rot2quat(mrot)
+        bone.rotation_quaternion = mrot
         if frame is not None:
             bone.keyframe_insert("rotation_quaternion", frame=frame)
             bone.keyframe_insert("location", frame=frame)
+
 
 def load_bvh(self, res_db, root_path):
     scene = bpy.data.scenes["Scene"]
@@ -396,20 +411,39 @@ def load_bvh(self, res_db, root_path):
 
     bpy.context.scene.frame_end = nFrames
 
-    all_betas = res_db['pred_betas']
+    all_betas = res_db["pred_betas"]
     avg_beta = np.mean(all_betas, axis=0)
+
+    # 对每一帧
+    # 对第一个旋转矩阵mrots[0]进行180度旋转,使其与角色的初始姿态对齐
+
+    mat = res_db["pred_thetas"]
+
+    mat = mat.reshape((nFrames, joint_num, 3, 3))
+    print(mat.shape)
+    for frame in range(nFrames):
+        mat[frame][0] = rotate180(mat[frame][0])
+
+    # 转为四元数
+    mat_qua = np.zeros((nFrames, joint_num, 4))
+
+    for frame in range(nFrames):
+        pose = mat[frame]
+        for ibone, mrot in enumerate(pose):
+            quaternion = rot2quat(mrot)
+            mat_qua[frame, ibone] = quaternion
+
+    # denoise
 
     for frame in range(nFrames):
         print(frame)
         scene.frame_set(frame)
 
-        trans = res_db['transl_camsys'][frame]
+        trans = res_db["transl_camsys"][frame]
         shape = avg_beta
-        pose = res_db["pred_thetas"][frame]
-               
+        pose = mat_qua[frame]
+
         apply_trans_pose_shape(
-            trans, pose, shape, ob,
-            arm_ob, obname, scene, frame=frame)
+            trans, pose, shape, ob, arm_ob, obname, scene, frame=frame
+        )
         # scene.update()
-
-
