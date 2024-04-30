@@ -117,9 +117,6 @@ def conv_avg_denoise(mat_origin, kernel_size=3, joint_num=55):
 
 
 def recognize_video_ext(ext=""):
-    """
-    判断文件类型
-    """
     if ext == "mp4":
         return cv2.VideoWriter_fourcc(*"mp4v"), "." + ext
     elif ext == "avi":
@@ -356,21 +353,7 @@ def setState0():
 
 
 # apply trans pose and shape to character
-def apply_trans_pose_shape(trans, pose, ob, arm_ob, obname, scene, joint_num, frame=None):
-    #
-    """
-    transform pose into rotation matrices (for pose) and pose blendshapes
-
-    Args:
-        trans (_type_): _description_
-        pose (_type_): _description_
-        shape (_type_): _description_
-        ob (_type_): _description_
-        arm_ob (_type_): _description_
-        obname (_type_): _description_
-        scene (_type_): _description_
-        frame (_type_, optional): _description_. Defaults to None.
-    """
+def apply_trans_pose_shape(trans, pose, shape, ob, arm_ob, obname, scene, frame=None):
     # 将姿势参数pose转换为旋转矩阵mrots和姿势形状参数bsh
     mrots, bsh = rodrigues2bshapes(pose)
     # 对第一个旋转矩阵mrots[0]进行180度旋转,使其与角色的初始姿态对齐
@@ -380,20 +363,16 @@ def apply_trans_pose_shape(trans, pose, ob, arm_ob, obname, scene, joint_num, fr
 
     # 匹配骨骼dict
 
-    if joint_num == 55:
-        prefix = ""
-        selected_part_match = x_part_match
-    else:
-        prefix = obname + '_'
-        selected_part_match = part_match
+    selected_part_match = x_part_match
+
     # set the location of the first bone to the translation parameter
     # arm_ob.pose.bones[obname + '_Pelvis'].location = trans
     # 应用到root
-    # arm_ob.pose.bones[prefix + "root"].location = trans
-    # arm_ob.pose.bones[prefix + "root"].keyframe_insert("location", frame=frame)
+    arm_ob.pose.bones["root"].location = trans
+    arm_ob.pose.bones["root"].keyframe_insert("location", frame=frame)
     # set the pose of each bone to the quaternion specified by pose
     for ibone, mrot in enumerate(mrots):
-        bone = arm_ob.pose.bones[prefix + selected_part_match["bone_%02d" % ibone]]
+        bone = arm_ob.pose.bones[selected_part_match["bone_%02d" % ibone]]
         bone.rotation_quaternion = rot2quat(mrot)
         if frame is not None:
             bone.keyframe_insert("rotation_quaternion", frame=frame)
@@ -402,30 +381,35 @@ def apply_trans_pose_shape(trans, pose, ob, arm_ob, obname, scene, joint_num, fr
 def load_bvh(self, res_db, root_path):
     scene = bpy.data.scenes["Scene"]
 
-    joint_num = res_db["joint_num"]
-    print("joint num = ", joint_num)
+    joint_num = 55
     ob, obname, arm_ob = init_scene(self, root_path, joint_num)
 
-    # for k in ob.data.shape_keys.key_blocks.keys():
-    #     bpy.data.shape_keys["Key"].key_blocks[k].slider_min = -10
-    #     bpy.data.shape_keys["Key"].key_blocks[k].slider_max = 10
+    for k in ob.data.shape_keys.key_blocks.keys():
+        bpy.data.shape_keys["Key"].key_blocks[k].slider_min = -10
+        bpy.data.shape_keys["Key"].key_blocks[k].slider_max = 10
 
     # clear all animation data
     arm_ob.animation_data_clear()
-
+    # cam_ob.animation_data_clear()
+    # load smpl params:
     nFrames = len(res_db["pred_thetas"])
 
     bpy.context.scene.frame_end = nFrames
 
+    all_betas = res_db['pred_betas']
+    avg_beta = np.mean(all_betas, axis=0)
+
     for frame in range(nFrames):
+        print(frame)
         scene.frame_set(frame)
 
-        trans = res_db["pred_cam_root"][frame]
+        trans = res_db['transl_camsys'][frame]
+        shape = avg_beta
         pose = res_db["pred_thetas"][frame]
                
         apply_trans_pose_shape(
-            trans, pose, ob, arm_ob, obname, scene, joint_num, frame=frame
-        )
+            trans, pose, shape, ob,
+            arm_ob, obname, scene, frame=frame)
         # scene.update()
 
 

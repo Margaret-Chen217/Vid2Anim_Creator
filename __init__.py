@@ -85,6 +85,9 @@ def initProperty():
     bpy.types.Scene.use_denoise = bpy.props.BoolProperty(
         name="use_denoise", description="Some tooltip", default=False
     )
+    bpy.types.Scene.with_face_bs = bpy.props.BoolProperty(
+        name = "with_face_bs", description="Some tooltip", default=False
+    )
 
 
 class GenerateAnimPanel(bpy.types.Panel):
@@ -106,6 +109,12 @@ class GenerateAnimPanel(bpy.types.Panel):
         row = layout.row(align=True)
         row.prop(scene, "sourcefile_path")
         row.operator("hybrik.import_source_file", text="", icon="IMPORT")
+
+        # Exp Setting
+
+        layout.label(text="With Face BlendShape")
+        row = layout.row(align=True)
+        row.prop(scene, "with_face_bs")
 
         # GPU Setting
         layout.label(text="GPU Setting")
@@ -146,8 +155,7 @@ class GenerateAnimPanel(bpy.types.Panel):
         # Hybrik
         layout.label(text="Animation")
         row = layout.row(align=True)
-        row.operator("hybrik.generate_hybrik_anim", text="Hybrik")
-        row.operator("hybrik.generate_niki_anim", text="Niki")
+        row.operator("hybrik.generate_hybrik_anim", text="Generate")
 
 
 class UtilPanel(bpy.types.Panel):
@@ -162,21 +170,21 @@ class UtilPanel(bpy.types.Panel):
         layout = self.layout
         scene = context.scene
 
-        # Util
+        # Load PK
         layout.label(text="Load pk")
         row = layout.row(align=True)
-        row.operator("hybrik.load_pk", text="import .pk file")
-
-        # Hybrik
-        layout.label(text="Smooth")
-        row = layout.row(align=True)
-        row.operator("hybrik.import_source_file", text="SMOOTH ANIMATION")
-        # layout.label(text=f"Progress: {context.scene.progress}")
+        row.operator("hybrik.load_pk", text="Import .pk File")
 
         # Reset Location
         layout.label(text="Reset Location")
         row = layout.row(align=True)
-        row.operator("hybrik.reset_location", text="RESET LOCATION")
+        row.operator("hybrik.reset_location", text="Reset Location")
+
+        # Lock Root
+        layout.label(text="Lock Root")
+        row = layout.row(align=True)
+        row.operator("hybrik.reset_location", text="Lock Root X")
+        row.operator("hybrik.reset_location", text="Lock Root Y")
 
         # Export
         layout.label(text="Export")
@@ -245,30 +253,6 @@ class GenerateHybrikAnimOperator(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class GenerateNikiAnimOperator(bpy.types.Operator):
-    bl_idname = "hybrik.generate_niki_anim"
-    bl_label = ""
-    bl_description = "Description that shows in blender tooltips"
-    bl_options = {"REGISTER"}
-
-    @classmethod
-    def poll(cls, context):
-        return True
-
-    def execute(self, context):
-        img_path_list = util.video2imageSeq(context, tempfolder_path)
-        denoise = context.scene.use_denoise
-        niki_ins = predict.Niki(context)
-        niki_ins.prepare()
-        res_db = niki_ins.run(img_path_list, denoise)
-        print("Niki Test Finished")
-
-        root_path = os.path.dirname(os.path.realpath(__file__))
-        util.load_bvh(self, res_db, root_path)
-
-        return {"FINISHED"}
-
-
 class ResetLocationOperator(bpy.types.Operator):
     bl_idname = "hybrik.reset_location"
     bl_label = "Reset locations"
@@ -323,7 +307,6 @@ classes = [
     ImportSourceFileOperator,
     GenerateHybrikAnimOperator,
     ResetLocationOperator,
-    GenerateNikiAnimOperator,
     PG_ButterWorthPropsGroup,
     PG_AvgConvPropsGroup,
     PG_AvgGaussianPropsGroup,
