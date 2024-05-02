@@ -41,85 +41,7 @@ def video2imageSeq(context, tempfolder_path):
     return img_path_list
 
 
-def butterworth_denoise(mat_origin, order=4, cutoff_freq=0.1, sampling_freq=1, joint_num = 55):
-    # 计算滤波器的分子和分母系数
-    nyquist_freq = 0.5 * sampling_freq
-    normalized_cutoff_freq = cutoff_freq / nyquist_freq
-    b, a = butter(order, normalized_cutoff_freq, btype="low", analog=False)
-
-    print("matrix shape: ", mat_origin.shape)
-    frame_num = mat_origin.shape[0]
-
-    matrix = []
-
-    for f in range(frame_num):
-        pose = mat_origin[f]
-        frame_matrix = np.asarray(pose).reshape(joint_num, 3, 3)
-        row = []
-        for j in range(joint_num):
-            row.append(frame_matrix[j])
-
-        matrix.append(row)
-
-    matrix = np.array(matrix)
-    print(matrix.shape)
-    # print(matrix)
-
-    # 创建一个新的数组存储滤波后的矩阵
-
-    filtered_matrix = np.zeros_like(matrix)
-
-    for j in range(joint_num):
-        for i in range(3):
-            for k in range(3):
-                filtered_matrix[:, j, i, k] = filtfilt(b, a, matrix[:, j, i, k])
-    print(filtered_matrix.shape)
-    # print(filtered_matrix)
-
-    filtered_pred_thetas = filtered_matrix.reshape(frame_num, -1)
-    print(filtered_pred_thetas.shape)
-    # print(filtered_pred_thetas)
-
-    return filtered_pred_thetas
-
-
-def conv_avg_denoise(mat_origin, kernel_size=3, joint_num=55):
-    print("matrix shape: ", mat_origin.shape)
-    frame_num = mat_origin.shape[0]
-
-    matrix = []
-
-    for f in range(frame_num):
-        pose = mat_origin[f]
-        frame_matrix = np.asarray(pose).reshape(joint_num, 3, 3)
-        matrix.append(frame_matrix)
-
-    matrix = np.array(matrix)
-    print(matrix.shape)
-
-    # 创建一个新的数组存储卷积平均后的矩阵
-    filtered_matrix = np.zeros_like(matrix)
-
-    # 创建二维卷积核
-    kernel = np.ones((kernel_size, kernel_size)) / (kernel_size ** 2)
-
-    # 对每个关节的旋转矩阵进行卷积操作
-    for j in range(joint_num):
-        for i in range(3):
-            filtered_matrix[:, j, i, :] = convolve2d(matrix[:, j, i, :], kernel, mode='same')
-
-    print(filtered_matrix.shape)
-
-    filtered_pred_thetas = filtered_matrix.reshape(frame_num, -1)
-    print(filtered_pred_thetas.shape)
-
-    return filtered_pred_thetas
-
-
 def recognize_video_ext(ext=""):
-    """
-    判断文件类型
-    """
     if ext == "mp4":
         return cv2.VideoWriter_fourcc(*"mp4v"), "." + ext
     elif ext == "avi":
@@ -185,6 +107,7 @@ def get_video_info(in_file):
 
     return stream, videoinfo, datalen
 
+
 import os
 import pickle as pk
 
@@ -245,21 +168,32 @@ def deg2rad(angle):
 
 def init_scene(self, root_path, joint_num):
     # load fbx model
-    print("joint_num init = ", joint_num)
     if joint_num == 55:
-        bpy.ops.import_scene.fbx(filepath=os.path.join(root_path, 'data', 'smplx-neutral.fbx'), axis_forward='-Y', axis_up='-Z', global_scale=1)
-        obname = 'SMPLX-mesh-neutral'
-        arm_obname = 'SMPLX-neutral'
+        bpy.ops.import_scene.fbx(
+            filepath=os.path.join(root_path, "data", "smplx-neutral.fbx"),
+            axis_forward="-Y",
+            axis_up="-Z",
+            global_scale=1,
+        )
+        obname = "SMPLX-mesh-neutral"
+        arm_obname = "SMPLX-neutral"
     else:
         gender = "m"
-        bpy.ops.import_scene.fbx(filepath=os.path.join(root_path, 'data', f'basicModel_{gender}_lbs_10_207_0_v1.0.2.fbx'), axis_forward='-Y', axis_up='-Z', global_scale=100)
-        obname = '%s_avg' % gender[0]
-        arm_obname = 'Armature'
+        bpy.ops.import_scene.fbx(
+            filepath=os.path.join(
+                root_path, "data", f"basicModel_{gender}_lbs_10_207_0_v1.0.2.fbx"
+            ),
+            axis_forward="-Y",
+            axis_up="-Z",
+            global_scale=100,
+        )
+        obname = "%s_avg" % gender[0]
+        arm_obname = "Armature"
 
     print("success load fbx")
     self.report({"INFO"}, "Load FBX " + obname)
     ob = bpy.data.objects[obname]
-    
+
     ob.active_material = bpy.data.materials["Material"]
 
     cam_ob = bpy.data.objects["Camera"]
@@ -311,12 +245,12 @@ def convert_transl(transl):
     Returns:
         _type_: _description_
     """
-    
+
     xyz_convert = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]], dtype=np.float32)
-   
+
     if type(transl) == torch.Tensor:
         return transl.numpy().dot(xyz_convert)
-        
+
     else:
         # type(transl) == np.ndarray
         return transl.dot(xyz_convert)
@@ -356,76 +290,92 @@ def setState0():
 
 
 # apply trans pose and shape to character
-def apply_trans_pose_shape(trans, pose, ob, arm_ob, obname, scene, joint_num, frame=None):
-    #
-    """
-    transform pose into rotation matrices (for pose) and pose blendshapes
+def apply_trans_pose_shape(trans, pose, shape, ob, arm_ob, obname, scene, frame=None):
 
-    Args:
-        trans (_type_): _description_
-        pose (_type_): _description_
-        shape (_type_): _description_
-        ob (_type_): _description_
-        arm_ob (_type_): _description_
-        obname (_type_): _description_
-        scene (_type_): _description_
-        frame (_type_, optional): _description_. Defaults to None.
-    """
-    # 将姿势参数pose转换为旋转矩阵mrots和姿势形状参数bsh
-    mrots, bsh = rodrigues2bshapes(pose)
-    # 对第一个旋转矩阵mrots[0]进行180度旋转,使其与角色的初始姿态对齐
-    mrots[0] = rotate180(mrots[0])
     # 转换坐标系F
     trans = convert_transl(trans)
 
     # 匹配骨骼dict
 
-    if joint_num == 55:
-        prefix = ""
-        selected_part_match = x_part_match
-    else:
-        prefix = obname + '_'
-        selected_part_match = part_match
+    selected_part_match = x_part_match
+
     # set the location of the first bone to the translation parameter
     # arm_ob.pose.bones[obname + '_Pelvis'].location = trans
     # 应用到root
-    # arm_ob.pose.bones[prefix + "root"].location = trans
-    # arm_ob.pose.bones[prefix + "root"].keyframe_insert("location", frame=frame)
+    arm_ob.pose.bones["root"].location = trans
+    arm_ob.pose.bones["root"].keyframe_insert("location", frame=frame)
     # set the pose of each bone to the quaternion specified by pose
-    for ibone, mrot in enumerate(mrots):
-        bone = arm_ob.pose.bones[prefix + selected_part_match["bone_%02d" % ibone]]
-        bone.rotation_quaternion = rot2quat(mrot)
+    for ibone, mrot in enumerate(pose):
+        bone = arm_ob.pose.bones[selected_part_match["bone_%02d" % ibone]]
+        bone.rotation_quaternion = mrot
         if frame is not None:
             bone.keyframe_insert("rotation_quaternion", frame=frame)
             bone.keyframe_insert("location", frame=frame)
 
-def load_bvh(self, res_db, root_path):
+
+def load_bvh(self, res_db, root_path, denoise_type = None, denoise_param = None):
     scene = bpy.data.scenes["Scene"]
 
-    joint_num = res_db["joint_num"]
-    print("joint num = ", joint_num)
+    joint_num = 55
     ob, obname, arm_ob = init_scene(self, root_path, joint_num)
 
-    # for k in ob.data.shape_keys.key_blocks.keys():
-    #     bpy.data.shape_keys["Key"].key_blocks[k].slider_min = -10
-    #     bpy.data.shape_keys["Key"].key_blocks[k].slider_max = 10
+    for k in ob.data.shape_keys.key_blocks.keys():
+        bpy.data.shape_keys["Key"].key_blocks[k].slider_min = -10
+        bpy.data.shape_keys["Key"].key_blocks[k].slider_max = 10
 
     # clear all animation data
     arm_ob.animation_data_clear()
-
+    # cam_ob.animation_data_clear()
+    # load smpl params:
     nFrames = len(res_db["pred_thetas"])
 
     bpy.context.scene.frame_end = nFrames
 
+    all_betas = res_db["pred_betas"]
+    avg_beta = np.mean(all_betas, axis=0)
+
+    # 对每一帧
+    # 对第一个旋转矩阵mrots[0]进行180度旋转,使其与角色的初始姿态对齐
+
+    mat = res_db["pred_thetas"]
+    # mat ,bsh = rodrigues2bshapes
+    mat = mat.reshape((nFrames, joint_num, 3, 3))
+    for frame in range(nFrames):
+        mat[frame][0] = rotate180(mat[frame][0])
+
+    # 转为四元数
+    mat_qua = np.zeros((nFrames, joint_num, 4))
+
+    for frame in range(nFrames):
+        pose = mat[frame]
+        for ibone, mrot in enumerate(pose):
+            quaternion = rot2quat(mrot)
+            mat_qua[frame, ibone] = quaternion
+    
+    # denoise
+    import denoise
+    
+    if denoise_type != None:
+        print("### Run Denoise")
+        if denoise_type == "fourier":
+            print("### Run Fourier Smoothing")
+            cutoff_ratio = denoise_param.cutoff_ratio
+            mat_qua  = denoise.fourier_smooth(mat_qua, nFrames, joint_num, cutoff_ratio)
+            
+        if denoise_type == "gaussian":
+            print("### Run Gaussian Smoothing")
+            sigma = denoise_param.sigma
+            mat_qua  = denoise.gaussian_smooth(mat_qua,joint_num, sigma)
+            
+        
+
     for frame in range(nFrames):
         scene.frame_set(frame)
 
-        trans = res_db["pred_cam_root"][frame]
-        pose = res_db["pred_thetas"][frame]
-               
+        trans = res_db["transl_camsys"][frame]
+        shape = avg_beta
+        pose = mat_qua[frame]
+
         apply_trans_pose_shape(
-            trans, pose, ob, arm_ob, obname, scene, joint_num, frame=frame
+            trans, pose, shape, ob, arm_ob, obname, scene, frame=frame
         )
-        # scene.update()
-
-

@@ -1,16 +1,15 @@
 <!-- omit in toc -->
 # Vid2Anim Creator
 
-欢迎使用 Vid2Anim Creator，本插件可以从视频中提取角色动画
+欢迎使用 Vid2Anim Creator，本插件可以从视频中提取角色姿态
 
-<br />
 
 <p align="center">
   <a href="https://github.com/Margaret-Chen217/Vid2Anim_Creator/release/latest">
-    <img src="asset/taiji_clip.gif" alt="Logo"  >
+    <img src="asset/Video.gif" alt="Logo"  >
   </a>
 
-  <h3 align="center">视频提取角色动作</h3>
+  <h3 align="center">视频提取角色姿态</h3>
   <p align="center">
     效果良好的动作捕捉，快速开始你的项目！
     <br />
@@ -52,6 +51,8 @@ Blender 3.3 LTS 或更新版本
 
 ![Update python modules](asset/module_update.png)
 
+WARNING: 若numpy版本高于1.24会自动进行降级，numpy=1.24与chumpy存在冲突
+
 #### 生成角色动画
 
 在```VIEW_3D```界面侧边栏打开**V2A Tool**
@@ -62,21 +63,35 @@ Blender 3.3 LTS 或更新版本
 
 配置是否需要使用GPU进行处理，和是否需要开启降噪功能
 
-![alt text](asset/image.png)
+![alt text](asset/image-3.png)
 
-本插件提供巴特沃斯，卷积平滑和高斯卷积三种降噪方式
+本插件提供傅里叶降噪和高斯平滑两种降噪方式
 
 选择降噪模式并设置对应参数
 
-![alt text](asset/image-3.png)
+![alt text](asset/image.png)
 
-最后根据要使用的提取算法点击对应的按钮
+最后点击`Generate`生成角色动画
 
-![alt text](asset/image-2.png)
 
 #### 重定向至其他模型
 
-待补全
+- 生成动画后选择导出BVH格式
+
+- BVH格式重定向至其他模型，以MMD为例：
+
+  - Blender导入.bvh文件，骨骼旋转方式设置为四元数
+  - 下载 [SMPLX-MMD骨骼名称对照|Google Drive](https://drive.google.com/file/d/1-QW4lxPNFdmRwSkd4_U5GWoX_09Uqqkt/view?usp=drive_link)
+  - 使用[XPS](https://github.com/johnzero7/XNALaraMesh)对骨骼进行重命名
+  - POSE模式下重置所有变换，调整为A-POSE
+  - 使用[MMD_Tool](https://github.com/powroupi/blender_mmd_tools)导出.vmd格式动画文件
+  - 导入MikuMikuDance, 关闭所有足部IK
+
+重定向效果如下图所示：
+
+![alt text](asset/Snipaste_2024-05-01_15-59-14.png)
+
+![alt text](asset/Snipaste_2024-05-01_15-59-27.png)
 
 ### 文件目录说明
 
@@ -106,7 +121,6 @@ filetree
 
 - [HybrIK](https://github.com/Jeff-sjtu/HybrIK)
 
-- [NIKI](https://github.com/Jeff-sjtu/NIKI.git)
   
 - [GitHub Emoji Cheat Sheet](https://www.webpagefx.com/tools/emoji-cheat-sheet)
 
@@ -115,23 +129,5 @@ filetree
 - [Best_README_template](https://github.com/shaojintian/Best_README_template.git)
 
 - [SMPL_blender_addon](https://github.com/Meshcapade/SMPL_blender_addon)
-
-
-<!-- links -->
-[your-project-path]:shaojintian/Best_README_template
-[contributors-shield]: https://img.shields.io/github/contributors/shaojintian/Best_README_template.svg?style=flat-square
-[contributors-url]: https://github.com/shaojintian/Best_README_template/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/shaojintian/Best_README_template.svg?style=flat-square
-[forks-url]: https://github.com/shaojintian/Best_README_template/network/members
-[stars-shield]: https://img.shields.io/github/stars/shaojintian/Best_README_template.svg?style=flat-square
-[stars-url]: https://github.com/shaojintian/Best_README_template/stargazers
-[issues-shield]: https://img.shields.io/github/issues/shaojintian/Best_README_template.svg?style=flat-square
-[issues-url]: https://img.shields.io/github/issues/shaojintian/Best_README_template.svg
-[license-shield]: https://img.shields.io/github/license/shaojintian/Best_README_template.svg?style=flat-square
-[license-url]: https://github.com/shaojintian/Best_README_template/blob/master/LICENSE.txt
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=flat-square&logo=linkedin&colorB=555
-[linkedin-url]: https://linkedin.com/in/shaojintian
-
-
 
 

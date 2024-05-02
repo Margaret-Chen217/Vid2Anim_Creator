@@ -31,35 +31,26 @@ class PG_DenoisePropsGroup(bpy.types.PropertyGroup):
         name="mode",
         description="denoise mode",
         items=[
-            ("butterworth", "butterworth", ""),
-            ("conv_avg", "conv_avg", ""),
-            ("conv_gaussian", "conv_gaussian", ""),
+            ("gaussian", "gaussian", ""),
+            ("fourier", "fourier", ""),
         ],
     )
 
 
-class PG_ButterWorthPropsGroup(bpy.types.PropertyGroup):
-    order: bpy.props.IntProperty(
-        name="order", description="butter worth order", default=4
-    )
-
-    cutoff_freq: bpy.props.FloatProperty(
-        name="cutoff_freq", description="cutoff frequency", default=0.1
-    )
-
-    sampling_freq: bpy.props.IntProperty(
-        name="sampling_freq", description="sample frequency", default=1
-    )
-
-
-class PG_AvgConvPropsGroup(bpy.types.PropertyGroup):
-    kernel_size: bpy.props.IntProperty(
-        name="kernel size", description="kernel size", default=3
+class PG_FourierPropsGroup(bpy.types.PropertyGroup):
+    cutoff_ratio: bpy.props.FloatProperty(
+        name="cutoff ratio",
+        description="fourier cutoff ratio",
+        default=0.8,
+        max=1,
+        min=0,
     )
 
 
 class PG_AvgGaussianPropsGroup(bpy.types.PropertyGroup):
-    sigma: bpy.props.FloatProperty(name="sigma", description="sigma", default=1.0)
+    sigma: bpy.props.FloatProperty(
+        name="sigma", description="gaussian sigma", default=0.2, max=1, min=0.01
+    )
 
 
 bl_info = {
@@ -85,6 +76,9 @@ def initProperty():
     bpy.types.Scene.use_denoise = bpy.props.BoolProperty(
         name="use_denoise", description="Some tooltip", default=False
     )
+    # bpy.types.Scene.with_face_bs = bpy.props.BoolProperty(
+    #     name="with_face_bs", description="Some tooltip", default=False
+    # )
 
 
 class GenerateAnimPanel(bpy.types.Panel):
@@ -120,25 +114,12 @@ class GenerateAnimPanel(bpy.types.Panel):
             row = layout.row(align=True)
             row.prop(context.window_manager.anim_tool, "denoise_mode")
 
-            if context.window_manager.anim_tool.denoise_mode == "butterworth":
+            if context.window_manager.anim_tool.denoise_mode == "fourier":
                 row = layout.row(align=True)
-                row.label(text="order")
-                row.prop(context.window_manager.butterworth, "order", text="")
+                row.label(text="cutoff")
+                row.prop(context.window_manager.fourier, "cutoff_ratio", text="")
 
-                row = layout.row(align=True)
-                row.label(text="cutoff_freq")
-                row.prop(context.window_manager.butterworth, "cutoff_freq", text="")
-
-                row = layout.row(align=True)
-                row.label(text="sampling_freq")
-                row.prop(context.window_manager.butterworth, "sampling_freq", text="")
-
-            if context.window_manager.anim_tool.denoise_mode == "conv_avg":
-                row = layout.row(align=True)
-                row.label(text="kernel size")
-                row.prop(context.window_manager.conv_avg, "kernel_size", text="")
-
-            if context.window_manager.anim_tool.denoise_mode == "conv_gaussian":
+            if context.window_manager.anim_tool.denoise_mode == "gaussian":
                 row = layout.row(align=True)
                 row.label(text="sigma")
                 row.prop(context.window_manager.conv_gaussian, "sigma", text="")
@@ -146,8 +127,7 @@ class GenerateAnimPanel(bpy.types.Panel):
         # Hybrik
         layout.label(text="Animation")
         row = layout.row(align=True)
-        row.operator("hybrik.generate_hybrik_anim", text="Hybrik")
-        row.operator("hybrik.generate_niki_anim", text="Niki")
+        row.operator("hybrik.generate_hybrik_anim", text="Generate")
 
 
 class UtilPanel(bpy.types.Panel):
@@ -162,28 +142,29 @@ class UtilPanel(bpy.types.Panel):
         layout = self.layout
         scene = context.scene
 
-        # Util
+        # Load PK
         layout.label(text="Load pk")
         row = layout.row(align=True)
-        row.operator("hybrik.load_pk", text="import .pk file")
-
-        # Hybrik
-        layout.label(text="Smooth")
-        row = layout.row(align=True)
-        row.operator("hybrik.import_source_file", text="SMOOTH ANIMATION")
-        # layout.label(text=f"Progress: {context.scene.progress}")
+        row.operator("hybrik.load_pk", text="Import .pk File")
 
         # Reset Location
         layout.label(text="Reset Location")
         row = layout.row(align=True)
-        row.operator("hybrik.reset_location", text="RESET LOCATION")
+        row.operator("hybrik.reset_location", text="Reset Location")
+
+        # Lock Root
+        # layout.label(text="Lock Root")
+        # row = layout.row(align=True)
+        # row.operator("hybrik.reset_location", text="Lock X")
+        # row.operator("hybrik.reset_location", text="Lock Y")
+        # row.operator("hybrik.reset_location", text="Lock Z")
 
         # Export
         layout.label(text="Export")
         row = layout.row(align=True)
         row.operator("export_scene.fbx", text="FBX")
-        row.operator("export_scene.fbx", text="BVH")
-        row.operator("export_scene.fbx", text="PK")
+        row.operator("export_anim.bvh", text="BVH")
+        # row.operator("export_scene.fbx", text="PK")
 
 
 class ImportSourceFileOperator(bpy.types.Operator, ImportHelper):
@@ -225,46 +206,27 @@ class GenerateHybrikAnimOperator(bpy.types.Operator):
         img_path_list = util.video2imageSeq(context, tempfolder_path)
 
         denoise = context.scene.use_denoise
+        denoise_param = None
         if denoise:
             print("denoise mode: ", context.window_manager.anim_tool.denoise_mode)
             denoise = context.window_manager.anim_tool.denoise_mode
+            if denoise == "fourier":
+                denoise_param = context.window_manager.fourier
+            elif denoise == "gaussian":
+                denoise_param = context.window_manager.conv_gaussian
         else:
             denoise = None
 
         hybrik_ins = predict.Hybrik(context)
         hybrik_ins.prepare()
-        res_db = hybrik_ins.run(img_path_list, denoise)
+        res_db = hybrik_ins.run(img_path_list)
 
         # save pk file
         # with open(os.path.join(tempfolder_path, "res.pk"), "wb") as fid:
         #     pk.dump(res_db, fid)
 
         root_path = os.path.dirname(os.path.realpath(__file__))
-        util.load_bvh(self, res_db, root_path)
-
-        return {"FINISHED"}
-
-
-class GenerateNikiAnimOperator(bpy.types.Operator):
-    bl_idname = "hybrik.generate_niki_anim"
-    bl_label = ""
-    bl_description = "Description that shows in blender tooltips"
-    bl_options = {"REGISTER"}
-
-    @classmethod
-    def poll(cls, context):
-        return True
-
-    def execute(self, context):
-        img_path_list = util.video2imageSeq(context, tempfolder_path)
-        denoise = context.scene.use_denoise
-        niki_ins = predict.Niki(context)
-        niki_ins.prepare()
-        res_db = niki_ins.run(img_path_list, denoise)
-        print("Niki Test Finished")
-
-        root_path = os.path.dirname(os.path.realpath(__file__))
-        util.load_bvh(self, res_db, root_path)
+        util.load_bvh(self, res_db, root_path, denoise, denoise_param)
 
         return {"FINISHED"}
 
@@ -323,10 +285,8 @@ classes = [
     ImportSourceFileOperator,
     GenerateHybrikAnimOperator,
     ResetLocationOperator,
-    GenerateNikiAnimOperator,
-    PG_ButterWorthPropsGroup,
-    PG_AvgConvPropsGroup,
     PG_AvgGaussianPropsGroup,
+    PG_FourierPropsGroup
 ]
 
 
@@ -338,26 +298,20 @@ def register():
     bpy.types.WindowManager.anim_tool = bpy.props.PointerProperty(
         type=PG_DenoisePropsGroup
     )
-    bpy.types.WindowManager.butterworth = bpy.props.PointerProperty(
-        type=PG_ButterWorthPropsGroup
-    )
-    bpy.types.WindowManager.conv_avg = bpy.props.PointerProperty(
-        type=PG_AvgConvPropsGroup
-    )
     bpy.types.WindowManager.conv_gaussian = bpy.props.PointerProperty(
         type=PG_AvgGaussianPropsGroup
     )
-
+    bpy.types.WindowManager.fourier = bpy.props.PointerProperty(
+        type=PG_FourierPropsGroup
+    ) 
 
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
 
     del bpy.types.WindowManager.anim_tool
-    del bpy.types.WindowManager.butterworth
-    del bpy.types.WindowManager.conv_avg
     del bpy.types.WindowManager.conv_gaussian
-
+    del bpy.types.WindowManager.fourier
 
 if __name__ == "__main__":
     register()
