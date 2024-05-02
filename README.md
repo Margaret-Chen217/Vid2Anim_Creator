@@ -12,9 +12,9 @@
   <h3 align="center">视频提取角色姿态</h3>
   <p align="center">
     效果良好的动作捕捉，快速开始你的项目！
-    <br />
+    <!-- <br />
     <a href="https://github.com/shaojintian/Best_README_template"><strong>下载Release版本 »</strong></a>
-    <br />
+    <br /> -->
   </p>
 
 </p>
@@ -22,7 +22,7 @@
 ## 目录
 
 - [目录](#目录)
-  - [版本要求](#版本要求)
+  - [兼容性](#兼容性)
   - [**使用步骤**](#使用步骤)
     - [安装插件](#安装插件)
     - [配置运行环境](#配置运行环境)
@@ -31,15 +31,17 @@
   - [文件目录说明](#文件目录说明)
   - [鸣谢](#鸣谢)
 
-### 版本要求
+### 兼容性
 
 Blender 3.3 LTS 或更新版本
+
+Windows Only
 
 ### **使用步骤**
 
 #### 安装插件
 
-下载 [Release版本]()
+<!-- 下载 [Release版本]() -->
 
 点击 ```Preference -> Install ```选择```.zip```文件进行安装
 
