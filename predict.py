@@ -116,11 +116,7 @@ class Hybrik(Vid2Anim):
         # 设置Hybrik模型为评估模式
         self.hybrik_model.eval()
 
-    def run(self, img_path_list, denoise=None):
-        print("use_gpu: ", self.use_gpu)
-        print("use_denoise: ", denoise)
-        for k in self.res_db.keys():
-            print(k)
+    def run(self, img_path_list):
 
         # 预测
         # 初始化上一帧检测框
@@ -246,7 +242,6 @@ class Hybrik(Vid2Anim):
             if k == "joint_num":
                 continue
             mat = np.array(self.res_db[k])
-            print(k, ": ", mat.shape)
             self.res_db[k] = np.stack(self.res_db[k])
             assert self.res_db[k].shape[0] == n_frames
 
@@ -257,31 +252,4 @@ class Hybrik(Vid2Anim):
 
         # return self.res_db
 
-        # denoise
-        if denoise == None:
-            return self.res_db
-        else:
-            mat_copy = self.res_db["pred_thetas"]
-            if denoise == "butterworth":
-                if bpy.app.debug:
-                    print("Denoise Mode: butterworth")
-                mat_copy = self.res_db["pred_thetas"]
-                print(mat_copy.shape)
-                self.res_db["pred_thetas"] = util.butterworth_denoise(
-                    mat_copy, joint_num=55
-                )
-                return self.res_db
-
-            if denoise == "conv_avg":
-                if bpy.app.debug:
-                    print("Denoise Mode: conv_avg")
-                self.res_db["pred_thetas"] = util.conv_avg_denoise(
-                    mat_copy, joint_num=55
-                )
-
-            if denoise == "conv_gaussian":
-                if bpy.app.debug:
-                    print("Denoise Mode: conv_gaussian")
-                pass
-
-            return self.res_db
+        return self.res_db
